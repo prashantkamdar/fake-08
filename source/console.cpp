@@ -162,13 +162,18 @@ void Console::UpdateAndDraw(
       uint64_t ticksSinceLastCall,
       std::function<void()> clearFbFunction,
       uint8_t kdown,
-      uint8_t kheld)
+      uint8_t kheld,
+      std::function<void(const char*)> profFunc)
 {
     if (clearFbFunction) {
         clearFbFunction();
     }
 
+    profFunc("ClearFb");
+
     _input->SetState(kdown, kheld);
+
+    profFunc("SetInputState");
 
     if (_hasUpdate){
         // Push the _update function on the top of the lua stack
@@ -184,6 +189,7 @@ void Console::UpdateAndDraw(
         //pop the update fuction off the stack now that we're done with it
         lua_pop(_luaState, 0);
     }
+    profFunc("CallLuaUpdate");
 
     if (_hasDraw) {
         lua_getglobal(_luaState, "_draw");
@@ -193,15 +199,22 @@ void Console::UpdateAndDraw(
         //pop the update fuction off the stack now that we're done with it
         lua_pop(_luaState, 0);
     }
+    profFunc("CallLuaDraw");
+
 
     _picoFrameCount++;
 }
 
-void Console::FlipBuffer(uint8_t* fb, std::function<void()> postFlipFunction){
+void Console::FlipBuffer(
+    uint8_t* fb,
+    std::function<void()> postFlipFunction,
+    std::function<void(const char*)> profFunc){
     _graphics->flipBuffer(fb);
+    profFunc("GraphicsFlip");
 
     if (postFlipFunction) {
         postFlipFunction();
+        profFunc("PostFlip");
     }
 }
 

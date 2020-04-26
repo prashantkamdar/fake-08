@@ -32,9 +32,13 @@ class Console {
       uint64_t ticksSinceLastCall,
       std::function<void()> clearFbFunction,
       uint8_t kdown,
-      uint8_t kheld);
+      uint8_t kheld,
+      std::function<void(const char*)> profFunc);
 
-    void FlipBuffer(uint8_t* fb, std::function<void()> postFlipFunction);
+    void FlipBuffer(
+      uint8_t* fb,
+      std::function<void()> postFlipFunction,
+      std::function<void(const char*)> profFunc);
 
     void TurnOff();
 

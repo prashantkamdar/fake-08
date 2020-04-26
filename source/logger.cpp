@@ -31,12 +31,15 @@ void Logger::LogOutput(const char * func, size_t line, const char * format, ...)
     fflush(m_file);
 }
 
-void Logger::Write(const char * msg)
+void Logger::Write(const char * format, ...)
 {
     if (!m_enabled || !m_file)
         return;
+
+    va_list args;
+    va_start(args, format);
         
-    fprintf(m_file, msg);
+    fprintf(m_file, format, args);
 
     fflush(m_file);
 }

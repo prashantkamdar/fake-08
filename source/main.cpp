@@ -67,20 +67,58 @@ void clear3dsFrameBuffer() {
 
 }
 
+u64 _prof_last_time = 0, _prof_now_time = 0, _prof_frame_time = 0;
+double _prof_frameTimeMs;
+
+void recordCodeTimeBlock(const char* name){
+	//uncomment to write to console and log. Very slow on device (io bound?)
+	/*
+	_prof_now_time = svcGetSystemTick();
+    _prof_frame_time = _prof_now_time - _prof_last_time;
+	_prof_last_time = _prof_now_time;
+
+	_prof_frameTimeMs = _prof_frame_time / CPU_TICKS_PER_MSEC;
+
+	printf("block name: %s time in ms: %f\n", name, _prof_frameTimeMs);
+
+	Logger::Write("block name: ", name, _prof_frameTimeMs);
+	Logger::Write(name);
+	Logger::Write(" ms: ");
+	Logger::Write(std::to_string(_prof_frameTimeMs).c_str());
+	Logger::Write("\n");
+	*/
+}
+
 //3ds specific helper function
 void postFlip3dsFunction() {
 	gfxFlushBuffers();
+	recordCodeTimeBlock("gfxFlushBuffers");
 	gfxSwapBuffers();
+	recordCodeTimeBlock("gfxSwapBuffers");
 	gspWaitForVBlank();
+	recordCodeTimeBlock("gspWaitForVBlank");
+}
+
+
+
+uint64_t getSystemTick(){
+	return svcGetSystemTick();
+}
+
+
+
+double getTicksPerMs(){
+	return CPU_TICKS_PER_MSEC;
 }
 
 int main(int argc, char* argv[])
 {
-	u64 last_time = 0, now_time = 0, frame_time = 0;
+	
 
 	Logger::Initialize();
 	Logger::Write("created Logger\n");
 	gfxInitDefault();
+
 	Logger::Write("gfxInitDefault()\n");
 
 	Logger::Write("initializing Console\n");
@@ -92,7 +130,7 @@ int main(int argc, char* argv[])
 	consoleInit(GFX_BOTTOM, NULL);
 
 	Logger::Write("Loading cart\n");
-	console->LoadCart("testcart.p8");
+	console->LoadCart("lilking.p8");
 	Logger::Write("Cart Loaded\n");
 
 	#else
@@ -107,6 +145,10 @@ int main(int argc, char* argv[])
 
 	std::function<void()> clearFb = clear3dsFrameBuffer;
 	std::function<void()> postFlip = postFlip3dsFunction;
+
+	u64 last_time = 0, now_time = 0, frame_time = 0;
+
+	recordCodeTimeBlock("startup");
 
 	while (aptMainLoop())
 	{
@@ -164,14 +206,17 @@ int main(int argc, char* argv[])
 		//cart draw
 		//_draw();
 
-		console->UpdateAndDraw(frame_time, clear3dsFrameBuffer, p8kDown, p8kHeld);
+		recordCodeTimeBlock("PreUpdate");
+
+		console->UpdateAndDraw(frame_time, clear3dsFrameBuffer, p8kDown, p8kHeld, recordCodeTimeBlock);
 
 		//send pico 8 screen to framebuffer, then call the function to flush and swap buffers, and wait for vblank
 		
 		uint8_t* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
 
-		console->FlipBuffer(fb, postFlip);
+		recordCodeTimeBlock("GetFb");
 
+		console->FlipBuffer(fb, postFlip, recordCodeTimeBlock);
 	}
 
 

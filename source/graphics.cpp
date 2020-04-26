@@ -646,6 +646,7 @@ void Graphics::palt(uint8_t c, bool t){
 
 void Graphics::flipBuffer(uint8_t* fb) {
 	short x, y;
+	//todo: test if it is faster to convert colors to uint24_ts and write one instead of 3 (assuming these are )
     for(x = 0; x < 128; x++) {
     	for(y = 0; y < 128; y++) {
 			uint8_t c = _pico8_fb[x*128 + y];
