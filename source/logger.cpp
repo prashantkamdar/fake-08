@@ -39,7 +39,7 @@ void Logger::Write(const char * format, ...)
     va_list args;
     va_start(args, format);
         
-    fprintf(m_file, format, args);
+    vfprintf(m_file, format, args);
 
     fflush(m_file);
 }

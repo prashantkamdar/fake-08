@@ -72,7 +72,7 @@ double _prof_frameTimeMs;
 
 void recordCodeTimeBlock(const char* name){
 	//uncomment to write to console and log. Very slow on device (io bound?)
-	/*
+	
 	_prof_now_time = svcGetSystemTick();
     _prof_frame_time = _prof_now_time - _prof_last_time;
 	_prof_last_time = _prof_now_time;
@@ -81,12 +81,7 @@ void recordCodeTimeBlock(const char* name){
 
 	printf("block name: %s time in ms: %f\n", name, _prof_frameTimeMs);
 
-	Logger::Write("block name: ", name, _prof_frameTimeMs);
-	Logger::Write(name);
-	Logger::Write(" ms: ");
-	Logger::Write(std::to_string(_prof_frameTimeMs).c_str());
-	Logger::Write("\n");
-	*/
+	Logger::Write("block name: %s time in ms: %f\n", name, _prof_frameTimeMs);
 }
 
 //3ds specific helper function
