@@ -3,12 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <algorithm>
 
 #include "graphics.h"
 
 #include "stringToDataHelpers.h"
 
 #include "logger.h"
+
+const uint8_t PicoScreenWidth = 128;
+const uint8_t PicoScreenHeight = 128;
 
 const Color BgGray = BG_GRAY_COLOR;
 
@@ -30,16 +34,6 @@ const Color PaletteColors[] = {
 	COLOR_14,
 	COLOR_15
 };
-
-//not included in 3ds std? copied and pasted here for ease
-template<typename _Tp>
-    constexpr const _Tp&
-    clamp(const _Tp& __val, const _Tp& __lo, const _Tp& __hi)
-    {
-      __glibcxx_assert(!(__hi < __lo));
-      return (__val < __lo) ? __lo : (__hi < __val) ? __hi : __val;
-    }
-
 
 //call initialize to make sure defaults are correct
 Graphics::Graphics(std::string fontdata) {
@@ -84,6 +78,44 @@ void Graphics::copySpriteToScreen(
 	//note: no clipping yet
 	short scr_w = spr_w;
 	short scr_h = spr_h;
+
+	applyCameraToPoint(&scr_x, &scr_y);
+
+	// left clip
+	if (scr_x < _gfxState_clip_xb) {
+		int nclip = _gfxState_clip_xb - scr_x;
+		scr_x = _gfxState_clip_xb;
+		scr_w -= nclip;
+		if (!flip_x) {
+			spr_x += nclip;
+		} else {
+			spr_w -= nclip;
+		}
+	}
+
+	// right clip
+	if (scr_x + scr_w > _gfxState_clip_xe) {
+		int nclip = (scr_x + scr_w) - _gfxState_clip_xe;
+		scr_w -= nclip;
+	}
+
+	// top clip
+	if (scr_y < _gfxState_clip_yb) {
+		int nclip = _gfxState_clip_yb - scr_y;
+		scr_y = _gfxState_clip_yb;
+		scr_h -= nclip;
+		if (!flip_y) {
+			spr_y += nclip;
+		} else {
+			spr_h -= nclip;
+		}
+	}
+
+	// bottom clip
+	if (scr_y + scr_h > _gfxState_clip_ye) {
+		int nclip = (scr_y + scr_h) - _gfxState_clip_ye;
+		scr_h -= nclip;
+	}
 	
 	short dy = 1;
 	if (flip_y) {
@@ -148,6 +180,8 @@ void Graphics::copyStretchSpriteToScreen(
 		return;
 	}
 
+	applyCameraToPoint(&scr_x, &scr_y);
+
 	//shift bits to avoid floating point math
 	spr_x = spr_x << 16;
 	spr_y = spr_y << 16;
@@ -156,6 +190,42 @@ void Graphics::copyStretchSpriteToScreen(
 
 	int dx = spr_w / scr_w;
 	int dy = spr_h / scr_h;
+
+	// left clip
+	if (scr_x < _gfxState_clip_xb) {
+		int nclip = _gfxState_clip_xb - scr_x;
+		scr_x = _gfxState_clip_xb;
+		scr_w -= nclip;
+		if (!flip_x) {
+			spr_x += nclip * dx;
+		} else {
+			spr_w -= nclip * dx;
+		}
+	}
+
+	// right clip
+	if (scr_x + scr_w > _gfxState_clip_xe) {
+		int nclip = (scr_x + scr_w) - _gfxState_clip_xe;
+		scr_w -= nclip;
+	}
+
+	// top clip
+	if (scr_y < _gfxState_clip_yb) {
+		int nclip = _gfxState_clip_yb - scr_y;
+		scr_y = _gfxState_clip_yb;
+		scr_h -= nclip;
+		if (!flip_y) {
+			spr_y += nclip * dy;
+		} else {
+			spr_h -= nclip * dy;
+		}
+	}
+
+	// bottom clip
+	if (scr_y + scr_h > _gfxState_clip_ye) {
+		int nclip = (scr_y + scr_h) - _gfxState_clip_ye;
+		scr_h -= nclip;
+	}
 
 	if (flip_y) {
 		spr_y += spr_h - 1 * dy;
@@ -207,6 +277,11 @@ void Graphics::applyCameraToPoint(short *x, short *y) {
 	*y -= _gfxState_camera_y;
 }
 
+void Graphics::applyCameraToPoint(int *x, int *y) {
+	*x -= _gfxState_camera_x;
+	*y -= _gfxState_camera_y;
+}
+
 void Graphics::sortPointsLtoR(short *x1, short *y1, short *x2, short *y2){
 	if (*x1 > *x2) {
 		swap(x1, x2);
@@ -240,14 +315,35 @@ bool Graphics::isWithinClip(short x, short y) {
 		y <= _gfxState_clip_ye;
 }
 
-void Graphics::_private_pset(short x, short y, uint8_t col) {
-	applyCameraToPoint(&x, &y);
-	x = x & 127;
-	y = y & 127;
+bool Graphics::isXWithinClip(short x) {
+	return 
+		x >= _gfxState_clip_xb && 
+		x <= _gfxState_clip_xe;
+}
 
+bool Graphics::isYWithinClip(short y) {
+	return 
+		y >= _gfxState_clip_yb && 
+		y <= _gfxState_clip_ye;
+}
+
+
+short clampCoordToScreenDims(short val) {
+	return std::clamp(val, (short)0, (short)127);
+}
+
+
+void Graphics::_private_safe_pset(short x, short y, uint8_t col) {
 	if (isWithinClip(x, y)){
 		_pico8_fb[(x * 128) + y] = _gfxState_drawPaletteMap[col];
 	}
+}
+
+void Graphics::_private_pset(short x, short y, uint8_t col) {
+	x = x & 127;
+	y = y & 127;
+
+	_pico8_fb[(x * 128) + y] = _gfxState_drawPaletteMap[col];
 }
 //end helper methods
 
@@ -269,7 +365,11 @@ void Graphics::pset(short x, short y){
 void Graphics::pset(short x, short y, uint8_t col){
 	color(col);
 
-	_private_pset(x, y, col);
+	applyCameraToPoint(&x, &y);
+
+	if (isWithinClip(x, y)){
+		_private_pset(x, y, col);
+	}
 }
 
 uint8_t Graphics::pget(short x, short y){
@@ -313,32 +413,74 @@ void Graphics::line (short x1, short y1, short x2, short y2){
 	this->line(_gfxState_line_x, _gfxState_line_y, x1, y1, this->_gfxState_color);
 }
 
-void Graphics::line (short x1, short y1, short x2, short y2, uint8_t col) {
-	this->_gfxState_line_x = x2;
-	this->_gfxState_line_y = y2;
+void Graphics::_private_h_line (short x1, short x2, short y, uint8_t col){
+	if (!isYWithinClip(y)){
+		return;
+	}
+
+	short maxx = clampCoordToScreenDims(std::max(x1, x2));
+	short minx = clampCoordToScreenDims(std::min(x1, x2));
+
+	
+	//possible todo: check if memset is any better here? this seems to be wrong
+	//uint8_t* fb_line = _pico8_fb + y * PicoScreenWidth;
+	//memset(fb_line + minx, col, maxx - minx);
+	for (short x = minx; x <= maxx; x++){
+		_private_pset(x, y, col);
+	}
+}
+
+void Graphics::_private_v_line (short y1, short y2, short x, uint8_t col){
+	//save draw calls if its out
+	if (!isXWithinClip(x)){
+		return;
+	}
+
+	short maxy = clampCoordToScreenDims(std::max(y1, y2));
+	short miny = clampCoordToScreenDims(std::min(y1, y2));
+
+	for (short y = miny; y <= maxy; y++){
+		_private_pset(x, y, col);
+	}
+}
+
+void Graphics::line(short x0, short y0, short x1, short y1, uint8_t col) {
+	this->_gfxState_line_x = x1;
+	this->_gfxState_line_y = y1;
 	this->_gfxState_line_valid = true;
 
-	sortPointsLtoR(&x1, &y1, &x2, &y2);
+	applyCameraToPoint(&x0, &y0);
+	applyCameraToPoint(&x1, &y1);
 
-	float run = x2 - x1;
-	float rise = y2 - y1;
+	color(col);
 
 	//vertical line
-	if (run == 0) {
-		if (y1 > y2) {
-			swap(&y1, &y2);
-		}
-
-		for (short y = y1; y <= y2; y++){
-			_private_pset(x1, y, col);
-		}
+	if (x0 == x1) {
+		_private_v_line(y0, y1, x0, col);
+	} 
+	else if (y0 == y1) {
+		_private_h_line(x0, x1, y0, col);
 	}
 	else {
-		float slope = rise / run;
+		//tac08 line impl for diagonals (this should work for horizontal and vertical as well,
+		//but it has more branching)
+		int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+		int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+		int err = dx + dy, e2; /* error value e_xy */
 
-		for (short x = x1; x <= x2; x++){
-			short y = y1 + (short)ceil((float)x * slope);
-			_private_pset(x, y, col);
+		for (;;) { /* loop */
+			_private_safe_pset(x0, y0, col);
+			if (x0 == x1 && y0 == y1)
+				break;
+			e2 = 2 * err;
+			if (e2 >= dy) {
+				err += dy;
+				x0 += sx;
+			} /* e_xy+e_x > 0 */
+			if (e2 <= dx) {
+				err += dx;
+				y0 += sy;
+			} /* e_xy+e_y < 0 */
 		}
 	}
 }
@@ -353,20 +495,23 @@ void Graphics::circ(short ox, short oy, short r){
 
 void Graphics::circ(short ox, short oy, short r, uint8_t col){
 	color(col);
+
+	applyCameraToPoint(&ox, &oy);
+
 	short x = r;
 	short y = 0;
 	short decisionOver2 = 1-x;
 
 	while (y <= x) {
-		_private_pset(ox + x, oy + y, col);
-		_private_pset(ox + y, oy + x, col);
-		_private_pset(ox - x, oy + y, col);
-		_private_pset(ox - y, oy + x, col);
+		_private_safe_pset(ox + x, oy + y, col);
+		_private_safe_pset(ox + y, oy + x, col);
+		_private_safe_pset(ox - x, oy + y, col);
+		_private_safe_pset(ox - y, oy + x, col);
 
-		_private_pset(ox - x, oy - y, col);
-		_private_pset(ox - y, oy - x, col);
-		_private_pset(ox + x, oy - y, col);
-		_private_pset(ox + y, oy - x, col);
+		_private_safe_pset(ox - x, oy - y, col);
+		_private_safe_pset(ox - y, oy - x, col);
+		_private_safe_pset(ox + x, oy - y, col);
+		_private_safe_pset(ox + y, oy - x, col);
 
 		y += 1;
 		if (decisionOver2 < 0) {
@@ -390,19 +535,22 @@ void Graphics::circfill(short ox, short oy, short r){
 
 void Graphics::circfill(short ox, short oy, short r, uint8_t col){
 	color(col);
+
+	applyCameraToPoint(&ox, &oy);
+
 	if (r == 0) {
-		_private_pset(ox, oy, col);
+		_private_safe_pset(ox, oy, col);
 	}
 	else if (r == 1) {
-		_private_pset(ox, oy - 1, col);
-		line(ox-1, oy, ox+1, oy, col);
-		_private_pset(ox, oy + 1, col);
+		_private_safe_pset(ox, oy - 1, col);
+		_private_h_line(ox-1, ox+1, oy, col);
+		_private_safe_pset(ox, oy + 1, col);
 	}
 	else if (r > 0) {
 		short x = -r, y = 0, err = 2 - 2 * r;
 		do {
-			line(ox - x, oy + y, ox + x, oy + y, col);
-			line(ox - x, oy - y, ox + x, oy - y, col);
+			_private_h_line(ox - x, ox + x, oy + y, col);
+			_private_h_line(ox - x, ox + x, oy - y, col);
 			r = err;
 			if (r > x)
 				err += ++x * 2 + 1;
@@ -420,16 +568,16 @@ void Graphics::rect(short x1, short y1, short x2, short y2) {
 void Graphics::rect(short x1, short y1, short x2, short y2, uint8_t col) {
 	color(col);
 
+	applyCameraToPoint(&x1, &y1);
+	applyCameraToPoint(&x2, &y2);
+
 	sortCoordsForRect(&x1, &y1, &x2, &y2);
 
-	for (short i = x1; i <= x2; i++) {
-		for (short j = y1; j <= y2; j++) {
-			if ((i == x1 || i == x2 || j == y1 || j == y2) ) {
-				_private_pset(i, j, col);
-			}
-		}
-	}
+	_private_h_line(x1, x2, y1, col);
+	_private_h_line(x1, x2, y2, col);
 
+	_private_v_line(y1, y2, x1, col);
+	_private_v_line(y1, y2, x2, col);
 }
 
 void Graphics::rectfill(short x1, short y1, short x2, short y2) {
@@ -441,10 +589,8 @@ void Graphics::rectfill(short x1, short y1, short x2, short y2, uint8_t col) {
 
 	sortCoordsForRect(&x1, &y1, &x2, &y2);
 
-	for (short i = x1; i <= x2; i++) {
-		for (short j = y1; j <= y2; j++) {
-			_private_pset(i, j, col);
-		}
+	for (short y = y1; y <= y2; y++) {
+		_private_h_line(x1, x2, y, col);
 	}
 }
 
@@ -467,6 +613,15 @@ short Graphics::print(std::string str, short x, short y, uint16_t c) {
 	_gfxState_text_x = x;
 	_gfxState_text_y = y;
 
+	//font sprite sheet has text as color 7, with 0 as transparent. We need to override
+	//these values and restore them after
+	uint8_t prevCol7Map = _gfxState_drawPaletteMap[7];
+	bool prevCol0Transp = _gfxState_transparencyPalette[0];
+
+	_gfxState_drawPaletteMap[7] = c;
+	_gfxState_transparencyPalette[0] = true;
+
+
 	for (size_t n = 0; n < str.length(); n++) {
 		uint8_t ch = str[n];
 		if (ch >= 0x10 && ch < 0x80) {
@@ -482,6 +637,9 @@ short Graphics::print(std::string str, short x, short y, uint16_t c) {
 			y += 6;
 		}
 	}
+
+	_gfxState_drawPaletteMap[7] = prevCol7Map;
+	_gfxState_transparencyPalette[0] = prevCol0Transp;
 
 	//todo: auto scrolling
 
@@ -583,11 +741,10 @@ void Graphics::clip() {
 void Graphics::clip(short x, short y, short w, short h) {
 	short xe = x + w;
 	short ye = y + h;
-	_gfxState_clip_xb = clamp(x, (short)0, (short)127);
-	_gfxState_clip_yb = clamp(y, (short)0, (short)127);
-	
-	_gfxState_clip_xe = clamp(xe, (short)0, (short)127);
-	_gfxState_clip_ye = clamp(ye, (short)0, (short)127);
+	_gfxState_clip_xb = clampCoordToScreenDims(x);
+	_gfxState_clip_yb = clampCoordToScreenDims(y);
+	_gfxState_clip_xe = clampCoordToScreenDims(xe);
+	_gfxState_clip_ye = clampCoordToScreenDims(ye);
 }
 
 
@@ -658,17 +815,22 @@ void Graphics::palt(uint8_t c, bool t){
 	}
 }
 
-void Graphics::flipBuffer(uint8_t* fb) {
+void Graphics::flipBuffer(uint8_t* fb, int width, int height) {
 	short x, y;
+
+	short xOffset = width / 2 - PicoScreenWidth / 2;
+	short yOffset = height / 2 - PicoScreenHeight / 2;
 	//todo: test if it is faster to convert colors to uint24_ts and write one instead of 3 (assuming these are )
     for(x = 0; x < 128; x++) {
     	for(y = 0; y < 128; y++) {
 			uint8_t c = _pico8_fb[x*128 + y];
 			Color col = PaletteColors[_gfxState_screenPaletteMap[c]];
 
-			fb[((x*240)+ (239 - y))*3+0] = col.Blue;
-			fb[((x*240)+ (239 - y))*3+1] = col.Green;
-			fb[((x*240)+ (239 - y))*3+2] = col.Red;
+			int pixIdx = (((x + xOffset)*height)+ ((height - 1) - (y + yOffset)))*3;
+
+			fb[pixIdx + 0] = col.Blue;
+			fb[pixIdx + 1] = col.Green;
+			fb[pixIdx + 2] = col.Red;
     	}
     }
 }

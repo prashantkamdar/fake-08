@@ -95,6 +95,7 @@ void Console::LoadCart(std::string filename){
 
     //stubbed in graphics:
     lua_register(_luaState, "fillp", fillp);
+    lua_register(_luaState, "flip", flip);
 
     //input
     lua_register(_luaState, "btn", btn);
@@ -207,10 +208,12 @@ void Console::UpdateAndDraw(
 
 void Console::FlipBuffer(
     uint8_t* fb,
+    int width,
+    int height,
     std::function<void()> postFlipFunction,
     std::function<void(const char*)> profFunc){
-    _graphics->flipBuffer(fb);
-    profFunc("GraphicsFlip");
+
+    _graphics->flipBuffer(fb, width, height);
 
     if (postFlipFunction) {
         postFlipFunction();

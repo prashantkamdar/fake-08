@@ -17,6 +17,9 @@
 #include "tests/test_base.h"
 
 
+const int ScreenWidth = 400;
+const int ScreenHeight = 240;
+
 //3ds specific helper function
 uint8_t ConvertInputToP8(u32 input){
 	uint8_t result = 0;
@@ -63,7 +66,7 @@ void clear3dsFrameBuffer() {
 	#endif
 	uint8_t* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
 	//clear whole top framebuffer
-	memset(fb, bgcolor, 240*400*3);
+	memset(fb, bgcolor, ScreenHeight*ScreenWidth*3);
 
 }
 
@@ -210,8 +213,7 @@ int main(int argc, char* argv[])
 		uint8_t* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
 
 		recordCodeTimeBlock("GetFb");
-
-		console->FlipBuffer(fb, postFlip, recordCodeTimeBlock);
+		console->FlipBuffer(fb, ScreenWidth, ScreenHeight, postFlip, recordCodeTimeBlock);
 	}
 
 

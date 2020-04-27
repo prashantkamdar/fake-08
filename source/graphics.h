@@ -87,6 +87,7 @@ class Graphics {
 
 	void swap(short *x, short *y);
 	void applyCameraToPoint(short *x, short *y);
+	void applyCameraToPoint(int *x, int *y);
 
 	void sortPointsLtoR(short *x1, short *y1, short *x2, short *y2);
 
@@ -94,8 +95,13 @@ class Graphics {
 
 	bool isOnScreen(short x, short y);
 	bool isWithinClip(short x, short y);
+	bool isXWithinClip(short x);
+	bool isYWithinClip(short y);
 
 	void _private_pset(short x, short y, uint8_t col);
+	void _private_safe_pset(short x, short y, uint8_t col);
+	void _private_h_line (short x1, short x2, short y, uint8_t col);
+	void _private_v_line (short y1, short y2, short x, uint8_t col);
 
 	public:
 	Graphics(std::string fontdata);
@@ -187,7 +193,7 @@ class Graphics {
 	void cursor(short x, short y, uint8_t col);
 
 
-	void flipBuffer(uint8_t* fb);
+	void flipBuffer(uint8_t* fb, int width, int height);
 
 };
 

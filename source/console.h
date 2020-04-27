@@ -37,6 +37,8 @@ class Console {
 
     void FlipBuffer(
       uint8_t* fb,
+      int width,
+      int height,
       std::function<void()> postFlipFunction,
       std::function<void(const char*)> profFunc);
 
