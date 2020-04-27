@@ -19,6 +19,7 @@
 
 const int ScreenWidth = 400;
 const int ScreenHeight = 240;
+u64 _3dsFrame = 0;
 
 //3ds specific helper function
 uint8_t ConvertInputToP8(u32 input){
@@ -84,7 +85,7 @@ void recordCodeTimeBlock(const char* name){
 
 	printf("block name: %s time in ms: %f\n", name, _prof_frameTimeMs);
 
-	Logger::Write("block name: %s time in ms: %f\n", name, _prof_frameTimeMs);
+	Logger::Write("%lld,%s,%f\n", _3dsFrame, name, _prof_frameTimeMs);
 }
 
 //3ds specific helper function
@@ -145,6 +146,8 @@ int main(int argc, char* argv[])
 	std::function<void()> postFlip = postFlip3dsFunction;
 
 	u64 last_time = 0, now_time = 0, frame_time = 0;
+
+	
 
 	recordCodeTimeBlock("startup");
 
@@ -214,6 +217,8 @@ int main(int argc, char* argv[])
 
 		recordCodeTimeBlock("GetFb");
 		console->FlipBuffer(fb, ScreenWidth, ScreenHeight, postFlip, recordCodeTimeBlock);
+
+		_3dsFrame++;
 	}
 
 
