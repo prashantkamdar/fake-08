@@ -16,8 +16,19 @@ enum
 };
 
 struct Color {
-	char Red;
-	char Green;
-	char Blue;
-	char Alpha;
+	uint8_t Red;
+	uint8_t Green;
+	uint8_t Blue;
+	uint8_t Alpha;
+};
+
+struct Bgr24Col {
+	uint8_t Blue;
+	uint8_t Green;
+	uint8_t Red;
+};
+
+struct InputState_t {
+	uint8_t KDown;
+	uint8_t KHeld;
 };

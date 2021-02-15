@@ -2,11 +2,11 @@
 
 #include <string>
 
-extern "C" {
+//extern "C" {
   #include <lua.h>
   #include <lualib.h>
   #include <lauxlib.h>
-}
+//}
 
 #include "graphics.h"
 #include "Input.h"
@@ -21,8 +21,11 @@ int pset(lua_State *L);
 int pget(lua_State *L);
 int color(lua_State *L);
 int line (lua_State *L);
+int tline (lua_State *L);
 int circ(lua_State *L);
 int circfill(lua_State *L);
+int oval(lua_State *L);
+int ovalfill(lua_State *L);
 int rect(lua_State *L);
 int rectfill(lua_State *L);
 int print(lua_State *L);
@@ -73,12 +76,19 @@ int api_memcpy(lua_State *L);
 int api_memset(lua_State *L);
 int peek(lua_State *L);
 int poke(lua_State *L);
+int peek2(lua_State *L);
+int poke2(lua_State *L);
+int peek4(lua_State *L);
+int poke4(lua_State *L);
 int reload(lua_State *L);
 
 //cart data
 int cartdata(lua_State *L);
 int dget(lua_State *L);
 int dset(lua_State *L);
+
+//
+int printh(lua_State *L);
 
 //file system/vm functions
 int listcarts(lua_State *L);
@@ -87,6 +97,11 @@ int getbioserror(lua_State *L);
 int loadbioscart(lua_State *L);
 
 //system functions
+
+int rnd(lua_State *L);
+int srand(lua_State *L);
+int _update_buttons(lua_State *L);
+int run(lua_State *L);
 
 //api.tonum(val)
 

@@ -3,8 +3,10 @@
 #include <string>
 #include "hostVmShared.h"
 #include "PicoRam.h"
+#include <fix32.h>
+using namespace z8;
 
-#define COLOR_00 {  0,   0,   0, 255}
+#define COLOR_00 {  2,   4,   8, 255}
 #define COLOR_01 { 29,  43,  83, 255}
 #define COLOR_02 {126,  37,  83, 255}
 #define COLOR_03 {  0, 135,  81, 255}
@@ -14,21 +16,38 @@
 #define COLOR_07 {255, 241, 232, 255}
 #define COLOR_08 {255,   0,  77, 255}
 #define COLOR_09 {255, 163,   0, 255}
-#define COLOR_10 {255, 240,  36, 255}
-#define COLOR_11 {  0, 231,  86, 255}
+#define COLOR_10 {255, 236,  39, 255}
+#define COLOR_11 {  0, 228,  54, 255}
 #define COLOR_12 { 41, 173, 255, 255}
 #define COLOR_13 {131, 118, 156, 255}
 #define COLOR_14 {255, 119, 168, 255}
 #define COLOR_15 {255, 204, 170, 255}
 
+//alt palette
+#define COLOR_128 { 41,  24,  20, 255}
+#define COLOR_129 { 17,  29,  53, 255}
+#define COLOR_130 { 66,  33,  54, 255}
+#define COLOR_131 { 18,  83,  89, 255}
+#define COLOR_132 {116,  47,  41, 255}
+#define COLOR_133 { 73,  51,  59, 255}
+#define COLOR_134 {162, 136, 121, 255}
+#define COLOR_135 {243, 239, 125, 255}
+#define COLOR_136 {190,  18,  80, 255}
+#define COLOR_137 {255, 108,  36, 255}
+#define COLOR_138 {168, 231,  46, 255}
+#define COLOR_139 {  0, 181,  67, 255}
+#define COLOR_140 {  6,  90, 181, 255}
+#define COLOR_141 {117,  70, 101, 255}
+#define COLOR_142 {255, 110,  89, 255}
+#define COLOR_143 {255, 157, 129, 255}
+
 #define BG_GRAY_COLOR {128, 128, 128, 255}
 
 
 class Graphics {
-	uint8_t _pico8_fb[128*128];
 	uint8_t fontSpriteData[128 * 64];
 
-	Color _paletteColors[16];
+	Color _paletteColors[144];
 
 	PicoRam* _memory;
 
@@ -67,6 +86,8 @@ class Graphics {
 	bool isWithinClip(int x, int y);
 	bool isXWithinClip(int x);
 	bool isYWithinClip(int y);
+	int clampXCoordToClip(int x);
+	int clampYCoordToCLip(int y);
 
 	void _private_pset(int x, int y, uint8_t col);
 	void _private_safe_pset(int x, int y, uint8_t col);
@@ -80,6 +101,10 @@ class Graphics {
 	uint8_t* GetScreenPaletteMap();
 	Color* GetPaletteColors();
 
+	bool isColorTransparent(uint8_t color);
+	uint8_t getDrawPalMappedColor(uint8_t color);
+	uint8_t getScreenPalMappedColor(uint8_t color);
+
 	void cls();
 	void cls(uint8_t color);
 
@@ -87,6 +112,7 @@ class Graphics {
 	void pset(int x, int y, uint8_t col);
 	uint8_t pget(int x, int y);
 
+	void color();
 	void color(uint8_t c);
 
 	void line ();
@@ -96,12 +122,21 @@ class Graphics {
 	void line (int x1, int y1, int x2, int y2);
 	void line (int x1, int y1, int x2, int y2, uint8_t col);
 
+	void tline(int x0, int y0, int x1, int y1, fix32 mx, fix32 my);
+	void tline(int x0, int y0, int x1, int y1, fix32 mx, fix32 my, fix32 mdx, fix32 mdy);
+
 	void circ(int ox, int oy);
 	void circ(int ox, int oy, int r);
 	void circ(int ox, int oy, int r, uint8_t col);
 	void circfill(int ox, int oy);
 	void circfill(int ox, int oy, int r);
 	void circfill(int ox, int oy, int r, uint8_t col);
+
+	void oval(int x0, int y0, int x1, int y1);
+	void oval(int x0, int y0, int x1, int y1, uint8_t col);
+
+	void ovalfill(int x0, int y0, int x1, int y1);
+	void ovalfill(int x0, int y0, int x1, int y1, uint8_t col);
 
 	void rect(int x1, int y1, int x2, int y2);
 	void rect(int x1, int y1, int x2, int y2, uint8_t col);
@@ -116,8 +151,8 @@ class Graphics {
 		int n,
 		int x,
 		int y,
-		double w,
-		double h,
+		fix32 w,
+		fix32 h,
 		bool flip_x,
 		bool flip_y);
 

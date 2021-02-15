@@ -2,11 +2,11 @@
 
 #include "cartPatcher.h"
 
-extern "C" {
+//extern "C" {
   #include <lua.h>
   #include <lualib.h>
   #include <lauxlib.h>
-}
+//}
 
 //from https://github.com/benwiley4000/pico8-to-lua, which was in turn adapted from LovePotion: 
 //https://github.com/gamax92/picolove/blob/master/cart.lua (zlib license)
@@ -34,8 +34,18 @@ const char * patchLuaFunction = R"#(
         end
       end
     end)
-    -- rewrite assignment operators
-    lua = lua:gsub("(%S+)%s*([%+-%*/%%])=","%1 = %1 %2 ")
+    -- rewrite shorthand while statements
+    lua = lua:gsub("while%s*(%b())%s*([^\n]*)\n", "while %1 do %2 end\n")
+    -- rewrite assignment operators (longest operators first)
+    lua = lua:gsub("(%S+)%s*>>>=","%1 = %1 >>> ")
+
+    lua = lua:gsub("(%S+)%s*%.%.=","%1 = %1 .. ")
+    lua = lua:gsub("(%S+)%s*^^=","%1 = %1 ^^ ")
+    lua = lua:gsub("(%S+)%s*<<=","%1 = %1 << ")
+    lua = lua:gsub("(%S+)%s*>>=","%1 = %1 >> ")
+    
+    lua = lua:gsub("(%S+)%s*([%+-%*/%%\\^|&])=","%1 = %1 %2 ")
+
     -- rewrite inspect operator "?"
     lua = lua:gsub("^(%s*)?([^\n\r]*)","%1print(%2)")
     -- convert binary literals to hex literals
